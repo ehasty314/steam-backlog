@@ -99,7 +99,7 @@ export default function Library() {
           </div>
           <section className="picks">
             <h2>Picks for you</h2>
-            <p className="sub">Unplayed games that share tags with what you've put the most hours into and rated highest.</p>
+            <p className="sub">Unplayed games that match what you've rated highest and played most. Low ratings steer picks away from similar games, and ★ is your predicted rating.</p>
             {!hasTags ? (
               <p className="meta">Steam didn't return tags for your games, so there's nothing to match on yet.</p>
             ) : picks.length === 0 ? (
@@ -112,7 +112,10 @@ export default function Library() {
                     <div className="body">
                       <div className="pick-head">
                         <h3>{p.game.name}</h3>
-                        <span className="match">{Math.round(p.match * 100)}% match</span>
+                        <span className="match">
+                          {p.predicted !== null && <span className="predicted" title="Predicted from your ratings of similar games">★ {p.predicted.toFixed(1)} · </span>}
+                          {Math.round(p.match * 100)}% match
+                        </span>
                       </div>
                       <div className="chips">
                         {p.tags.map((id) => tagNames[id] && <span key={id} className="chip">{tagNames[id]}</span>)}

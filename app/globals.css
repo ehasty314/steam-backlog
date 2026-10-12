@@ -33,3 +33,4 @@ textarea { min-height: 50px; resize: vertical; }
 .chips { display: flex; gap: 4px; flex-wrap: wrap; }
 .chip { background: #2c343c; color: var(--muted); border-radius: 4px; padding: 1px 6px; font-size: 12px; }
 .play { color: var(--accent); font-size: 13px; text-decoration: none; }
+.predicted { color: var(--star); }

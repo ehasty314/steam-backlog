@@ -14,7 +14,7 @@ Pulls your owned games and playtime from the Steam Web API, highlights what you'
 - `lib/steam.ts` calls `ResolveVanityURL` and `GetOwnedGames` on the server, so the key never reaches the browser.
 - `app/api/library/route.ts` exposes `GET /api/library?user=...`.
 - `lib/steam.ts` also pulls each game's community tags (with vote weights) from the store's `IStoreBrowseService/GetItems` API.
-- `lib/recommend.ts` powers **Picks for you**: it builds a taste profile from the tags of games you've played, weighted by hours (diminishing returns), your star rating, and whether you dropped them. Tags common across your whole library count for less. Unplayed games are ranked by how closely their tags match that profile.
+- `lib/recommend.ts` powers **Picks for you**: it builds a taste profile from the tags of games you've rated and played. Your star ratings lead: 4 to 5 stars pull picks toward a game's tags, 1 to 2 stars push them away, and unrated games count by hours played (diminishing returns). Tags common across your whole library count for less. Unplayed games are ranked by how closely their tags match that profile, and each pick gets a predicted star rating from your ratings of similar games.
 - `app/components/Library.tsx` is the UI. Your statuses, ratings and reviews are saved in browser localStorage for now.
 
 ## Roadmap
