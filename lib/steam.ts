@@ -8,7 +8,10 @@ export type Game = {
   lastPlayed: number | null; // unix seconds
   iconUrl: string | null;
   headerUrl: string;
+  tags: GameTag[]; // strongest first; empty if Steam has none
 };
+
+export type GameTag = { id: number; weight: number };
 
 function key(): string {
   const k = process.env.STEAM_API_KEY;
@@ -51,5 +54,52 @@ export async function getOwnedGames(steamId: string): Promise<Game[]> {
       ? `https://media.steampowered.com/steamcommunity/public/images/apps/${g.appid}/${g.img_icon_url}.jpg`
       : null,
     headerUrl: `https://cdn.cloudflare.steamstatic.com/steam/apps/${g.appid}/header.jpg`,
+    tags: [],
   }));
+}
+
+// Community tags (e.g. "Roguelike", "Story Rich") with vote weights, from the store browse API.
+// Batched because a library can hold thousands of games.
+export async function getTagsForApps(appids: number[]): Promise<Map<number, GameTag[]>> {
+  const out = new Map<number, GameTag[]>();
+  const BATCH = 50;
+  const batches: number[][] = [];
+  for (let i = 0; i < appids.length; i += BATCH) batches.push(appids.slice(i, i + BATCH));
+
+  await Promise.all(
+    batches.map(async (ids) => {
+      const input = {
+        ids: ids.map((appid) => ({ appid })),
+        context: { language: "english", country_code: "US" },
+        data_request: { include_tag_count: 20 },
+      };
+      const res = await fetch(
+        `${API}/IStoreBrowseService/GetItems/v1/?input_json=${encodeURIComponent(JSON.stringify(input))}`,
+        { next: { revalidate: 86400 } }
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      for (const item of data?.response?.store_items ?? []) {
+        const appid = item.appid ?? item.id;
+        let tags: GameTag[] = (item.tags ?? []).map((t: any) => ({ id: t.tagid, weight: t.weight ?? 0 }));
+        // Fall back to tag order when weights are missing: earlier tags have more votes.
+        if (!tags.length && item.tagids) {
+          tags = item.tagids.map((id: number, i: number) => ({ id, weight: item.tagids.length - i }));
+        }
+        if (appid && tags.length) out.set(appid, tags.sort((a, b) => b.weight - a.weight));
+      }
+    })
+  );
+  return out;
+}
+
+export async function getTagNames(): Promise<Record<number, string>> {
+  const res = await fetch(`${API}/IStoreService/GetTagList/v1/?key=${key()}&language=english`, {
+    next: { revalidate: 604800 },
+  });
+  if (!res.ok) return {};
+  const data = await res.json();
+  const names: Record<number, string> = {};
+  for (const t of data?.response?.tags ?? []) names[t.tagid] = t.name;
+  return names;
 }

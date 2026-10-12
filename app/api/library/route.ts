@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getOwnedGames, resolveSteamId } from "@/lib/steam";
+import { getOwnedGames, getTagNames, getTagsForApps, resolveSteamId } from "@/lib/steam";
 
 export async function GET(req: Request) {
   const user = new URL(req.url).searchParams.get("user");
@@ -7,7 +7,18 @@ export async function GET(req: Request) {
   try {
     const steamId = await resolveSteamId(user);
     const games = await getOwnedGames(steamId);
-    return NextResponse.json({ steamId, games });
+
+    // Tags power recommendations; the library still loads if Steam's store API is down.
+    let tagNames: Record<number, string> = {};
+    try {
+      const [tags, names] = await Promise.all([getTagsForApps(games.map((g) => g.appid)), getTagNames()]);
+      for (const g of games) g.tags = tags.get(g.appid) ?? [];
+      tagNames = names;
+    } catch (e) {
+      console.warn("Couldn't load tags:", (e as Error).message);
+    }
+
+    return NextResponse.json({ steamId, games, tagNames });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
   }

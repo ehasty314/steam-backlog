@@ -2,10 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Game } from "@/lib/steam";
+import { recommend, type Entry, type Log, type Status } from "@/lib/recommend";
 
-type Status = "unplayed" | "playing" | "finished" | "dropped" | "backlog";
-type Entry = { status?: Status; rating?: number; review?: string };
-type Log = Record<number, Entry>;
 type Filter = "all" | "never-played" | Status;
 
 // Personal logs live in the browser for now; a database can replace this later.
@@ -23,6 +21,7 @@ function hours(min: number) {
 export default function Library() {
   const [user, setUser] = useState("");
   const [games, setGames] = useState<Game[]>([]);
+  const [tagNames, setTagNames] = useState<Record<number, string>>({});
   const [log, setLog] = useState<Log>({});
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -44,6 +43,7 @@ export default function Library() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setGames(data.games);
+      setTagNames(data.tagNames ?? {});
       localStorage.setItem(USER_KEY, u);
     } catch (e) {
       setError((e as Error).message);
@@ -75,6 +75,9 @@ export default function Library() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [games, log, filter, query, sort]);
 
+  const picks = useMemo(() => recommend(games, log), [games, log]);
+  const hasTags = games.some((g) => g.tags?.length);
+
   const neverPlayed = games.filter((g) => g.playtimeMinutes === 0).length;
   const totalHours = Math.round(games.reduce((s, g) => s + g.playtimeMinutes, 0) / 60);
 
@@ -94,6 +97,37 @@ export default function Library() {
             <div><b>{neverPlayed}</b> never played ({Math.round((neverPlayed / games.length) * 100)}%)</div>
             <div><b>{totalHours}</b> hours total</div>
           </div>
+          <section className="picks">
+            <h2>Picks for you</h2>
+            <p className="sub">Unplayed games that share tags with what you've put the most hours into and rated highest.</p>
+            {!hasTags ? (
+              <p className="meta">Steam didn't return tags for your games, so there's nothing to match on yet.</p>
+            ) : picks.length === 0 ? (
+              <p className="meta">Play or rate a few games and picks will show up here.</p>
+            ) : (
+              <ol className="pick-list">
+                {picks.map((p) => (
+                  <li key={p.game.appid} className="pick">
+                    <img src={p.game.headerUrl} alt="" loading="lazy" />
+                    <div className="body">
+                      <div className="pick-head">
+                        <h3>{p.game.name}</h3>
+                        <span className="match">{Math.round(p.match * 100)}% match</span>
+                      </div>
+                      <div className="chips">
+                        {p.tags.map((id) => tagNames[id] && <span key={id} className="chip">{tagNames[id]}</span>)}
+                      </div>
+                      {p.because.length > 0 && (
+                        <p className="meta">Because you played {p.because.map((g) => g.name).join(" and ")}</p>
+                      )}
+                      <a href={`steam://run/${p.game.appid}`} className="play">Play on Steam</a>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+
           <div className="row">
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" />
             <select value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
