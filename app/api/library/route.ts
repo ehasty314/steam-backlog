@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getTimesToBeat, igdbConfigured } from "@/lib/igdb";
 import { getOwnedGames, getTagNames, getTagsForApps, resolveSteamId } from "@/lib/steam";
 
 export async function GET(req: Request) {
@@ -16,6 +17,15 @@ export async function GET(req: Request) {
       tagNames = names;
     } catch (e) {
       console.warn("Couldn't load tags:", (e as Error).message);
+    }
+
+    if (igdbConfigured()) {
+      try {
+        const times = await getTimesToBeat(games.map((g) => g.appid));
+        for (const g of games) g.timeToBeat = times.get(g.appid) ?? null;
+      } catch (e) {
+        console.warn("Couldn't load times to beat:", (e as Error).message);
+      }
     }
 
     return NextResponse.json({ steamId, games, tagNames });

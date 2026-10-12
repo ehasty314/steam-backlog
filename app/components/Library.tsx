@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Game } from "@/lib/steam";
+import type { Game, TimeToBeat } from "@/lib/steam";
+import Metacritic from "./Metacritic";
+import Seen from "./Seen";
+import { useDetails } from "./useDetails";
 import { recommend, type Entry, type Log, type Status } from "@/lib/recommend";
 
 type Filter = "all" | "never-played" | Status;
@@ -12,6 +15,16 @@ const USER_KEY = "backlog.user.v1";
 
 function loadLog(): Log {
   try { return JSON.parse(localStorage.getItem(LOG_KEY) ?? "{}"); } catch { return {}; }
+}
+
+function beat(t: TimeToBeat | null) {
+  if (!t) return null;
+  const parts = [
+    t.main && `${t.main}h main`,
+    t.extras && `${t.extras}h +extras`,
+    t.completionist && `${t.completionist}h 100%`,
+  ].filter(Boolean);
+  return parts.length ? <span title="Time to beat (IGDB)">⏱ {parts.join(" · ")}</span> : null;
 }
 
 function hours(min: number) {
@@ -25,7 +38,8 @@ export default function Library() {
   const [log, setLog] = useState<Log>({});
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<"name" | "playtime" | "recent">("playtime");
+  const [sort, setSort] = useState<"name" | "playtime" | "recent" | "shortest">("playtime");
+  const { details, want } = useDetails();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -71,12 +85,15 @@ export default function Library() {
       .sort((a, b) =>
         sort === "name" ? a.name.localeCompare(b.name)
         : sort === "recent" ? (b.lastPlayed ?? 0) - (a.lastPlayed ?? 0)
+        : sort === "shortest" ? (a.timeToBeat?.main ?? a.timeToBeat?.extras ?? Infinity) - (b.timeToBeat?.main ?? b.timeToBeat?.extras ?? Infinity)
         : b.playtimeMinutes - a.playtimeMinutes);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [games, log, filter, query, sort]);
 
   const picks = useMemo(() => recommend(games, log), [games, log]);
   const hasTags = games.some((g) => g.tags?.length);
+  const hasTimes = games.some((g) => g.timeToBeat);
+  useEffect(() => { want(picks.map((p) => p.game.appid)); }, [picks, want]);
 
   const neverPlayed = games.filter((g) => g.playtimeMinutes === 0).length;
   const totalHours = Math.round(games.reduce((s, g) => s + g.playtimeMinutes, 0) / 60);
@@ -120,6 +137,10 @@ export default function Library() {
                       <div className="chips">
                         {p.tags.map((id) => tagNames[id] && <span key={id} className="chip">{tagNames[id]}</span>)}
                       </div>
+                      <div className="meta-row meta">
+                        <Metacritic score={details[p.game.appid]?.metacritic} url={details[p.game.appid]?.metacriticUrl} />
+                        {p.game.timeToBeat?.main && <span title="Time to beat, main story (IGDB)">⏱ {p.game.timeToBeat.main}h</span>}
+                      </div>
                       {p.because.length > 0 && (
                         <p className="meta">Because you played {p.because.map((g) => g.name).join(" and ")}</p>
                       )}
@@ -145,6 +166,7 @@ export default function Library() {
               <option value="playtime">Most played</option>
               <option value="recent">Recently played</option>
               <option value="name">A to Z</option>
+              {hasTimes && <option value="shortest">Shortest to beat</option>}
             </select>
           </div>
 
@@ -152,11 +174,15 @@ export default function Library() {
             {visible.map((g) => {
               const entry = log[g.appid] ?? {};
               return (
-                <li key={g.appid} className="card">
+                <Seen key={g.appid} className="card" onSeen={() => want([g.appid])}>
                   <img src={g.headerUrl} alt="" loading="lazy" />
                   <div className="body">
                     <h3>{g.name}</h3>
-                    <p className="meta">{hours(g.playtimeMinutes)}</p>
+                    <div className="meta-row meta">
+                      <span>{hours(g.playtimeMinutes)}</span>
+                      <Metacritic score={details[g.appid]?.metacritic} url={details[g.appid]?.metacriticUrl} />
+                    </div>
+                    {g.timeToBeat && <p className="meta">{beat(g.timeToBeat)}</p>}
                     <select value={statusOf(g)} onChange={(e) => update(g.appid, { status: e.target.value as Status })}>
                       <option value="unplayed">Unplayed</option>
                       <option value="backlog">Backlog</option>
@@ -174,7 +200,7 @@ export default function Library() {
                     <textarea placeholder="Notes or review" value={entry.review ?? ""}
                       onChange={(e) => update(g.appid, { review: e.target.value })} />
                   </div>
-                </li>
+                </Seen>
               );
             })}
           </ul>

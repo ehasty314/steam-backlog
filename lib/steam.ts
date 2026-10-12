@@ -9,7 +9,10 @@ export type Game = {
   iconUrl: string | null;
   headerUrl: string;
   tags: GameTag[]; // strongest first; empty if Steam has none
+  timeToBeat: TimeToBeat | null; // hours, from IGDB when configured
 };
+
+export type TimeToBeat = { main: number | null; extras: number | null; completionist: number | null };
 
 export type GameTag = { id: number; weight: number };
 
@@ -63,6 +66,7 @@ export async function getOwnedGames(steamId: string): Promise<Game[]> {
       : null,
     headerUrl: `https://cdn.cloudflare.steamstatic.com/steam/apps/${g.appid}/header.jpg`,
     tags: [],
+    timeToBeat: null,
   }));
 }
 
@@ -110,4 +114,20 @@ export async function getTagNames(): Promise<Record<number, string>> {
   const names: Record<number, string> = {};
   for (const t of data?.response?.tags ?? []) names[t.tagid] = t.name;
   return names;
+}
+
+export type Details = { metacritic: number | null; metacriticUrl: string | null };
+
+// Store page details (Metacritic score). The store API takes one app per request and
+// rate-limits to roughly 200 requests per 5 minutes, so callers fetch these lazily.
+export async function getDetails(appid: number): Promise<Details> {
+  const res = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appid}&cc=us&l=english`, {
+    next: { revalidate: 604800 },
+  });
+  if (!res.ok) throw new Error(`Steam store returned ${res.status}`);
+  const data = (await res.json())?.[appid]?.data;
+  return {
+    metacritic: data?.metacritic?.score ?? null,
+    metacriticUrl: data?.metacritic?.url ?? null,
+  };
 }

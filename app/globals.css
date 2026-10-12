@@ -34,3 +34,8 @@ textarea { min-height: 50px; resize: vertical; }
 .chip { background: #2c343c; color: var(--muted); border-radius: 4px; padding: 1px 6px; font-size: 12px; }
 .play { color: var(--accent); font-size: 13px; text-decoration: none; }
 .predicted { color: var(--star); }
+.mc { display: inline-block; min-width: 26px; text-align: center; border-radius: 4px; padding: 0 4px; font-size: 12px; font-weight: 700; color: #000; }
+.mc-good { background: #66cc33; }
+.mc-mixed { background: #ffcc33; }
+.mc-bad { background: #ff6874; }
+.meta-row { display: flex; gap: 8px; align-items: center; }
