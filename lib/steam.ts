@@ -35,6 +35,14 @@ export async function resolveSteamId(input: string): Promise<string> {
   return data.response.steamid;
 }
 
+// Steam lists servers, test builds and tools as owned "games"; they aren't things you play.
+const NON_GAME =
+  /\b(dedicated server|test server|public test|test branch|pts|playtest|sdk|soundtrack|ost|benchmark|redistributables?|mod tools?)\b/i;
+
+export function isNonGame(name: string) {
+  return NON_GAME.test(name);
+}
+
 export async function getOwnedGames(steamId: string): Promise<Game[]> {
   const res = await fetch(
     `${API}/IPlayerService/GetOwnedGames/v1/?key=${key()}&steamid=${steamId}&include_appinfo=1&include_played_free_games=1&format=json`,
@@ -45,7 +53,7 @@ export async function getOwnedGames(steamId: string): Promise<Game[]> {
   const games = data?.response?.games;
   if (!games) throw new Error("No games returned. Is your profile's Game details setting public?");
 
-  return games.map((g: any) => ({
+  return games.filter((g: any) => !isNonGame(g.name ?? "")).map((g: any) => ({
     appid: g.appid,
     name: g.name,
     playtimeMinutes: g.playtime_forever ?? 0,
