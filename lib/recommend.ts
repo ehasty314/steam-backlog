@@ -21,7 +21,7 @@ const SIMILAR = 0.25;
 // 4 to 5 stars pull picks toward its tags, 1 to 2 stars push them away. Unrated games
 // fall back to playtime with diminishing returns. A rated game counts even with no
 // Steam hours, since you may have played it elsewhere.
-function signal(g: Game, entry: Entry | undefined): number {
+export function signal(g: Game, entry: Entry | undefined): number {
   const hours = Math.log1p(g.playtimeMinutes / 60);
   let s = entry?.rating ? Math.max(hours, 1) * ((entry.rating - 2.5) / 1.25) : hours;
   if (entry?.status === "dropped" && s > 0) s *= 0.3;
@@ -44,12 +44,9 @@ function cosine(a: Vec, b: Vec) {
   return dot(a, b) / (norm(a) * norm(b) || 1);
 }
 
-export function recommend(games: Game[], log: Log, limit = 12): Pick[] {
-  const tagged = games.filter((g) => g.tags.length);
-  if (!tagged.length) return [];
-
-  // Tags that nearly every game in your library has ("Singleplayer") say little,
-  // so weight each tag by how rare it is in your library (IDF).
+// Each game's tags as a vector. Tags that nearly every game in your library has
+// ("Singleplayer") say little, so each tag is weighted by how rare it is in your library (IDF).
+export function tagVectors(tagged: Game[]): Map<number, Vec> {
   const df = new Map<number, number>();
   for (const g of tagged) for (const t of g.tags) df.set(t.id, (df.get(t.id) ?? 0) + 1);
   const idf = (id: number) => Math.log((tagged.length + 1) / (df.get(id) ?? 1));
@@ -59,16 +56,28 @@ export function recommend(games: Game[], log: Log, limit = 12): Pick[] {
     const max = g.tags[0].weight || 1;
     vectors.set(g.appid, new Map(g.tags.map((t) => [t.id, (t.weight / max) * idf(t.id)])));
   }
+  return vectors;
+}
 
+// Your taste as tag weights: positive for tags you gravitate to, negative for ones you rate down.
+export function tasteProfile(tagged: Game[], log: Log, vectors = tagVectors(tagged)) {
   const known = tagged
     .map((g) => ({ g, s: signal(g, log[g.appid]), rating: log[g.appid]?.rating ?? 0 }))
     .filter((p) => p.s !== 0);
-  if (!known.length) return [];
-
   const profile: Vec = new Map();
   for (const { g, s } of known) {
     for (const [id, w] of vectors.get(g.appid)!) profile.set(id, (profile.get(id) ?? 0) + s * w);
   }
+  return { known, profile };
+}
+
+export function recommend(games: Game[], log: Log, limit = 12): Pick[] {
+  const tagged = games.filter((g) => g.tags.length);
+  if (!tagged.length) return [];
+
+  const vectors = tagVectors(tagged);
+  const { known, profile } = tasteProfile(tagged, log, vectors);
+  if (!known.length) return [];
 
   const candidates = tagged.filter((g) => {
     const entry = log[g.appid];

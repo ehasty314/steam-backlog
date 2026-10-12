@@ -39,3 +39,29 @@ textarea { min-height: 50px; resize: vertical; }
 .mc-mixed { background: #ffcc33; }
 .mc-bad { background: #ff6874; }
 .meta-row { display: flex; gap: 8px; align-items: center; }
+.top { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.nav { color: var(--accent); text-decoration: none; font-weight: 600; }
+.taste { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.tile { background: var(--panel); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; }
+.tile b { font-size: 22px; }
+.tile span { color: var(--muted); font-size: 13px; }
+.panel { background: var(--panel); border-radius: 8px; padding: 14px 16px; }
+.panel h2 { margin: 0 0 10px; font-size: 18px; }
+.panel h4 { margin: 14px 0 6px; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.panel-head button { background: var(--accent); color: #000; border: 0; font-weight: 600; }
+.panel-head button:disabled { opacity: .5; }
+.headline { font-size: 22px; margin: 6px 0; color: var(--star); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.bars { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.bars li { display: grid; grid-template-columns: 140px 1fr auto; align-items: center; gap: 8px; font-size: 13px; }
+.bars i { display: block; height: 10px; border-radius: 5px; background: #00e054; }
+.bars em { font-style: normal; color: var(--muted); min-width: 24px; text-align: right; }
+.ratings span { color: var(--star); letter-spacing: 1px; }
+.ratings i { background: var(--star); }
+.chip-bad { background: #3a2226; color: #ff8a94; }
+.plain { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.reviews { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.reviews p { margin: 4px 0 0; white-space: pre-wrap; }
+@media (max-width: 500px) { .bars li { grid-template-columns: 100px 1fr auto; } }

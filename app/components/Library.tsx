@@ -5,17 +5,11 @@ import type { Game, TimeToBeat } from "@/lib/steam";
 import Metacritic from "./Metacritic";
 import Seen from "./Seen";
 import { useDetails } from "./useDetails";
+import { LOG_KEY, USER_KEY, loadLog } from "./useLibrary";
 import { recommend, type Entry, type Log, type Status } from "@/lib/recommend";
 
 type Filter = "all" | "never-played" | Status;
 
-// Personal logs live in the browser for now; a database can replace this later.
-const LOG_KEY = "backlog.log.v1";
-const USER_KEY = "backlog.user.v1";
-
-function loadLog(): Log {
-  try { return JSON.parse(localStorage.getItem(LOG_KEY) ?? "{}"); } catch { return {}; }
-}
 
 function beat(t: TimeToBeat | null) {
   if (!t) return null;

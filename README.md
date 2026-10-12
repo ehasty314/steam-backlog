@@ -7,8 +7,9 @@ Pulls your owned games and playtime from the Steam Web API, highlights what you'
 1. Get a Steam Web API key at https://steamcommunity.com/dev/apikey.
 2. `cp .env.example .env.local` and paste the key after `STEAM_API_KEY=`. This file is gitignored; keep the key out of chat and commits.
 3. Optional, for time-to-beat estimates: create a free app at https://dev.twitch.tv/console/apps (any name, OAuth redirect URL `http://localhost`, category "Application Integration"). Copy its Client ID and generate a Client Secret, then add both to `.env.local` as `IGDB_CLIENT_ID` and `IGDB_CLIENT_SECRET`.
-4. In Steam, set Profile → Edit Profile → Privacy Settings → **Game details** to Public (otherwise the API returns no games).
-5. `npm install && npm run dev`, then open http://localhost:3000 and enter your profile URL, vanity name, or SteamID64.
+4. Optional, for the AI-written profile on the **My taste** page: add `ANTHROPIC_API_KEY` to `.env.local` (get a key at https://console.anthropic.com/settings/keys).
+5. In Steam, set Profile → Edit Profile → Privacy Settings → **Game details** to Public (otherwise the API returns no games).
+6. `npm install && npm run dev`, then open http://localhost:3000 and enter your profile URL, vanity name, or SteamID64.
 
 ## How it works
 
@@ -18,6 +19,7 @@ Pulls your owned games and playtime from the Steam Web API, highlights what you'
 - `lib/recommend.ts` powers **Picks for you**: it builds a taste profile from the tags of games you've rated and played. Your star ratings lead: 4 to 5 stars pull picks toward a game's tags, 1 to 2 stars push them away, and unrated games count by hours played (diminishing returns). Tags common across your whole library count for less. Unplayed games are ranked by how closely their tags match that profile, and each pick gets a predicted star rating from your ratings of similar games.
 - `lib/igdb.ts` looks up time-to-beat estimates (main, main + extras, completionist) from IGDB for the whole library in a few batched calls.
 - `app/api/details/route.ts` fetches Metacritic scores from the Steam store. That API takes one game per request and is rate-limited, so the UI only asks for games as they scroll into view and caches them in the browser for a week.
+- **My taste** (`/me`, `lib/taste.ts`) shows the tags you gravitate to or rate down, how you rate, your favorites, most played, your reviews and your backlog size. Its "Write it with Claude" button sends your logged games, reviews, top tags and current picks to `app/api/profile/route.ts`, which asks Claude to write a short profile of you as a player.
 - `app/components/Library.tsx` is the UI. Your statuses, ratings and reviews are saved in browser localStorage for now.
 
 ## Roadmap
